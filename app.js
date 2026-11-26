@@ -1,8 +1,7 @@
-
 const express = require('express');
 const app = express();
 
-app.use(express.json()); // Parse incoming JSON bodies
+app.use(express.json());
 
 // Our temporary Todo data
 let todos = [
@@ -48,7 +47,6 @@ app.get('/todos/:id', (req, res) => {
 app.post('/todos', (req, res) => {
   const { task } = req.body;
 
-  // Validate task
   if (typeof task !== 'string' || task.trim() === '') {
     return res.status(400).json({
       message: 'Task is required'
@@ -56,7 +54,7 @@ app.post('/todos', (req, res) => {
   }
 
   const newTodo = {
-    id: todos.length + 1,
+    id: Math.max(0, ...todos.map((t) => t.id)) + 1,
     task: task.trim(),
     completed: false
   };
@@ -68,9 +66,9 @@ app.post('/todos', (req, res) => {
 
 // 6. PATCH Todo – Update
 app.patch('/todos/:id', (req, res) => {
-  const todo = todos.find(
-    (t) => t.id === parseInt(req.params.id)
-  );
+  const id = parseInt(req.params.id);
+
+  const todo = todos.find((t) => t.id === id);
 
   if (!todo) {
     return res.status(404).json({
@@ -78,7 +76,39 @@ app.patch('/todos/:id', (req, res) => {
     });
   }
 
-  Object.assign(todo, req.body);
+  const { task, completed } = req.body;
+
+  // Validate task if provided
+  if (task !== undefined) {
+    if (typeof task !== 'string' || task.trim() === '') {
+      return res.status(400).json({
+        message: 'Task must be a non-empty string'
+      });
+    }
+  }
+
+  // Validate completed if provided
+  if (completed !== undefined && typeof completed !== 'boolean') {
+    return res.status(400).json({
+      message: 'Completed must be true or false'
+    });
+  }
+
+  // Prevent empty updates
+  if (task === undefined && completed === undefined) {
+    return res.status(400).json({
+      message: 'Nothing to update'
+    });
+  }
+
+  // Update only the provided fields
+  if (task !== undefined) {
+    todo.task = task.trim();
+  }
+
+  if (completed !== undefined) {
+    todo.completed = completed;
+  }
 
   res.status(200).json(todo);
 });
